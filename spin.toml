@@ -1,0 +1,19 @@
+spin_manifest_version = 2
+
+[application]
+name = "participants"
+version = "0.1.0"
+authors = ["ffromm"]
+description = "Manage Hackathon participants"
+
+[[trigger.http]]
+route = "/participants"
+component = "participants"
+
+[component.participants]
+source = "/Users/ffromm/.cargo/target/wasm32-wasip1/release/participants.wasm"
+allowed_outbound_hosts = ["https://example-06adv5p8vpuu76550jkpukfr50.aws-use1.surreal.cloud"]
+[component.participants.build]
+command = "cargo build --target wasm32-wasip1 --release"
+workdir = "participants"
+watch = ["participants/src/**/*.rs", "participants/Cargo.toml"]
