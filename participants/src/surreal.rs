@@ -35,7 +35,7 @@ impl SurrealDB {
 
         let request = Request::builder()
             .method(Method::Post)
-            .uri(&self.uri("signin"))
+            .uri(self.uri("signin"))
             .header("Accept", "application/json")
             .body(serde_json::to_string(&signin_request)?)
             .build();
@@ -49,10 +49,10 @@ impl SurrealDB {
         Ok(())
     }
 
-    pub async fn sql(&mut self, query: &str) -> Result<Vec<serde_json::Value>> {
+    pub async fn sql(&self, query: &str) -> Result<Vec<serde_json::Value>> {
         let request = Request::builder()
             .method(Method::Post)
-            .uri(&self.uri("sql"))
+            .uri(self.uri("sql"))
             .header("Accept", "application/json")
             .header("Authorization", format!("Bearer {}", self.token))
             .header("Surreal-NS", &self.namespace)

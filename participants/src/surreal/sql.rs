@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 pub struct SQLQueryResponse {
     pub status: String,
