@@ -1,7 +1,9 @@
 mod signin;
+mod sql;
 
 use anyhow::Result;
-use spin_sdk::http::{Request, Method, Response};
+use spin_sdk::http::{Method, Request, Response};
+use sql::SQLQueryResponse;
 
 pub struct SurrealDB {
     host: String,
@@ -9,7 +11,7 @@ pub struct SurrealDB {
     password: String,
     namespace: String,
     database: String,
-    token: String
+    token: String,
 }
 
 impl SurrealDB {
@@ -31,12 +33,10 @@ impl SurrealDB {
             database: self.database.clone(),
         };
 
-        let uri = format!("{}/{}", self.host, "signin");
-
         let request = Request::builder()
             .method(Method::Post)
-            .uri(&uri)
-            .header("Accept","application/json")
+            .uri(self.uri("signin"))
+            .header("Accept", "application/json")
             .body(serde_json::to_string(&signin_request)?)
             .build();
 
@@ -47,6 +47,31 @@ impl SurrealDB {
         self.token = signin_response.token;
 
         Ok(())
+    }
+
+    pub async fn sql(&self, query: &str) -> Result<Vec<serde_json::Value>> {
+        let request = Request::builder()
+            .method(Method::Post)
+            .uri(self.uri("sql"))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Surreal-NS", &self.namespace)
+            .header("Surreal-DB", &self.database)
+            .body(query)
+            .build();
+
+        let response: Response = spin_sdk::http::send(request).await?;
+
+        let values = serde_json::from_slice::<Vec<SQLQueryResponse>>(response.body())?
+            .into_iter()
+            .map(|SQLQueryResponse { result, .. }| result)
+            .collect();
+
+        Ok(values)
+    }
+
+    fn uri(&self, route: &str) -> String {
+        format!("{}/{}", self.host, route)
     }
 }
 
@@ -66,7 +91,7 @@ impl SurrealDBBuilder {
             password: self.password,
             namespace: self.namespace,
             database: self.database,
-            token: String::new();
+            token: String::new(),
         }
     }
 

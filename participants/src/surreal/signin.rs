@@ -9,6 +9,7 @@ pub struct SigninRequest {
     pub password: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 pub struct SigninResponse {
     pub code: u16,

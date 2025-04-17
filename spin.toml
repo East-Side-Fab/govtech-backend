@@ -6,14 +6,28 @@ version = "0.1.0"
 authors = ["ffromm"]
 description = "Manage Hackathon participants"
 
+[variables]
+surrealdb_host = { required = true }
+surrealdb_user = { required = true }
+surrealdb_password = { required = true }
+surrealdb_namespace = { required = true }
+surrealdb_database = { required = true }
+
 [[trigger.http]]
 route = "/participants"
 component = "participants"
 
 [component.participants]
-source = "/Users/ffromm/.cargo/target/wasm32-wasip1/release/participants.wasm"
-allowed_outbound_hosts = ["https://example-06adv5p8vpuu76550jkpukfr50.aws-use1.surreal.cloud"]
+allowed_outbound_hosts = ["{{ surrealdb_host }}"]
+source = "participants/target/wasm32-wasip1/release/participants.wasm"
 [component.participants.build]
-command = "cargo build --target wasm32-wasip1 --release"
+command = "cargo build --target-dir ./target --target wasm32-wasip1 --release"
 workdir = "participants"
 watch = ["participants/src/**/*.rs", "participants/Cargo.toml"]
+
+[component.participants.variables]
+host = "{{ surrealdb_host }}"
+user = "{{ surrealdb_user }}"
+password = "{{ surrealdb_password }}"
+namespace = "{{ surrealdb_namespace }}"
+database = "{{ surrealdb_database }}"

@@ -1,23 +1,102 @@
+mod models;
 mod surreal;
 
-use spin_sdk::http::{IntoResponse, Request, Response};
-use spin_sdk::http_component;
+use anyhow::anyhow;
+use models::Participant;
+use spin_sdk::http::{IntoResponse, Method, Params, Request, Response, Router};
+use spin_sdk::{http_component, variables};
 
-/// A simple Spin HTTP component.
 #[http_component]
-async fn handle_participants(req: Request) -> anyhow::Result<impl IntoResponse> {
-    let mut sdb = surreal::SurrealDB::builder("https://example-06adv5p8vpuu76550jkpukfr50.aws-use1.surreal.cloud")
-        .user("bot")
-        .password("0xSuper_Secret_Password1!")
-        .namespace("hackathon")
-        .database("page")
+fn handle_participants(request: Request) -> impl IntoResponse {
+    let mut router = Router::new();
+    router.add_async("/participants", Method::Get, handle_get_participants);
+    router.add_async("/participants", Method::Post, handle_create_participant);
+    router.handle(request)
+}
+
+async fn handle_get_participants(_: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
+    let participants = get_participants().await?;
+    let response = Response::builder()
+        .status(200)
+        .header("content-type", "application/json")
+        .body(serde_json::to_string(&participants)?)
+        .build();
+    Ok(response)
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct CreateParticipantRequest {
+    pub mail: String,
+    pub first_name: String,
+    pub last_name: String,
+}
+
+async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
+    let payload = serde_json::from_slice::<CreateParticipantRequest>(r.body())?;
+
+    let participant = create_participant(payload).await?;
+
+    let response = Response::builder()
+        .status(201)
+        .header("content-type", "text/plain")
+        .body(serde_json::to_string(&participant)?)
+        .build();
+    Ok(response)
+}
+
+async fn get_participants() -> anyhow::Result<Vec<Participant>> {
+    let mut sdb = surreal::SurrealDB::builder(&variables::get("host")?)
+        .user(&variables::get("user")?)
+        .password(&variables::get("password")?)
+        .namespace(&variables::get("namespace")?)
+        .database(&variables::get("database")?)
         .build();
 
     sdb.signin().await?;
 
-    Ok(Response::builder()
-        .status(200)
-        .header("content-type", "text/plain")
-        .body("Hello World!")
-        .build())
+    let query_results = sdb.sql("SELECT * FROM participant").await?;
+    let participants: Vec<Participant> = query_results
+        .into_iter()
+        .map(serde_json::from_value::<Vec<Participant>>)
+        .collect::<Result<Vec<Vec<Participant>>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    Ok(participants)
+}
+
+async fn create_participant(payload: CreateParticipantRequest) -> anyhow::Result<Participant> {
+    let mut sdb = surreal::SurrealDB::builder(&variables::get("host")?)
+        .user(&variables::get("user")?)
+        .password(&variables::get("password")?)
+        .namespace(&variables::get("namespace")?)
+        .database(&variables::get("database")?)
+        .build();
+
+    sdb.signin().await?;
+
+    let data = serde_json::json!({
+        "mail": payload.mail,
+        "name": {
+            "first": payload.first_name,
+            "last": payload.last_name,
+        }
+    });
+
+    let query = format!(
+        "CREATE participant CONTENT {}",
+        serde_json::to_string(&data)?
+    );
+
+    let query_results = sdb.sql(&query).await?;
+    let participant: Option<Participant> = query_results
+        .into_iter()
+        .map(serde_json::from_value::<Vec<Participant>>)
+        .collect::<Result<Vec<Vec<Participant>>, _>>()?
+        .into_iter()
+        .flatten()
+        .last();
+
+    participant.ok_or(anyhow!("Couldn't create participant"))
 }
