@@ -11,6 +11,7 @@ fn handle_participants(request: Request) -> impl IntoResponse {
     let mut router = Router::new();
     router.add_async("/participants", Method::Get, handle_get_participants);
     router.add_async("/participants", Method::Post, handle_create_participant);
+    router.add_async("/participants", Method::Options, handle_options);
     router.handle(request)
 }
 
@@ -39,6 +40,16 @@ async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl
     let response = Response::builder()
         .status(201)
         .header("content-type", "text/plain")
+        .header(
+            "Access-Control-Allow-Origin",
+            "https://east-side-fab.github.io",
+        )
+        .header("Access-Control-Allow-Methods", "POST")
+        .header(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization",
+        )
+        .header("Access-Control-Allow-Credentials", "true")
         .body(serde_json::to_string(&participant)?)
         .build();
     Ok(response)
@@ -64,6 +75,18 @@ async fn get_participants() -> anyhow::Result<Vec<Participant>> {
         .collect();
 
     Ok(participants)
+}
+
+async fn handle_options(_: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
+    let response = Response::builder()
+        .status(204)
+        .header("Access-Control-Allow-Origin", "https://east-side-fab.github.io")
+        .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        .header("Access-Control-Allow-Credentials", "true")
+        .body(vec![])
+        .build();
+    Ok(response)
 }
 
 async fn create_participant(payload: CreateParticipantRequest) -> anyhow::Result<Participant> {
