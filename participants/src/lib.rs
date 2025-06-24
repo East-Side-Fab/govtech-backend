@@ -49,7 +49,7 @@ async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl
         .header("content-type", "application/json")
         .header(
             "Access-Control-Allow-Origin",
-            "https://east-side-fab.github.io",
+            "https://hackathon.govtech.saarland",
         )
         .header("Access-Control-Allow-Methods", "POST")
         .header(
@@ -89,7 +89,7 @@ async fn handle_options(_: Request, _: Params) -> anyhow::Result<impl IntoRespon
         .status(204)
         .header(
             "Access-Control-Allow-Origin",
-            "https://east-side-fab.github.io",
+            "https://hackathon.govtech.saarland",
         )
         .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         .header(
