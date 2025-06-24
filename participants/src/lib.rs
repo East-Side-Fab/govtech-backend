@@ -2,6 +2,7 @@ mod models;
 mod surreal;
 
 use anyhow::anyhow;
+use base64::prelude::*;
 use models::Participant;
 use spin_sdk::http::{IntoResponse, Method, Params, Request, Response, Router};
 use spin_sdk::{http_component, variables};
@@ -15,7 +16,13 @@ fn handle_participants(request: Request) -> impl IntoResponse {
     router.handle(request)
 }
 
-async fn handle_get_participants(_: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
+async fn handle_get_participants(request: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
+    let admin_name = variables::get("admin_name")?;
+    let admin_password = variables::get("admin_password")?;
+    if !verify_auth(&request, &admin_name, &admin_password) {
+        let response = Response::builder().status(401).build();
+        return Ok(response);
+    }
     let participants = get_participants().await?;
     let response = Response::builder()
         .status(200)
@@ -39,7 +46,7 @@ async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl
 
     let response = Response::builder()
         .status(201)
-        .header("content-type", "text/plain")
+        .header("content-type", "application/json")
         .header(
             "Access-Control-Allow-Origin",
             "https://east-side-fab.github.io",
@@ -47,7 +54,7 @@ async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl
         .header("Access-Control-Allow-Methods", "POST")
         .header(
             "Access-Control-Allow-Headers",
-            "Content-Type, Authorization",
+            "Content-Type, application/json",
         )
         .header("Access-Control-Allow-Credentials", "true")
         .body(serde_json::to_string(&participant)?)
@@ -80,9 +87,15 @@ async fn get_participants() -> anyhow::Result<Vec<Participant>> {
 async fn handle_options(_: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
     let response = Response::builder()
         .status(204)
-        .header("Access-Control-Allow-Origin", "https://east-side-fab.github.io")
+        .header(
+            "Access-Control-Allow-Origin",
+            "https://east-side-fab.github.io",
+        )
         .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        .header(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization",
+        )
         .header("Access-Control-Allow-Credentials", "true")
         .body(vec![])
         .build();
@@ -122,4 +135,21 @@ async fn create_participant(payload: CreateParticipantRequest) -> anyhow::Result
         .last();
 
     participant.ok_or(anyhow!("Couldn't create participant"))
+}
+
+fn verify_auth(req: &Request, user: &str, password: &str) -> bool {
+    let Some(auth) = req
+        .header("authorization")
+        .and_then(|v| v.as_str())
+        .and_then(|v| v.split(" ").skip(1).next())
+        .and_then(|v| BASE64_STANDARD.decode(v).ok())
+    else {
+        return false;
+    };
+
+    format!("{}:{}", user, password)
+        .as_bytes()
+        .iter()
+        .zip(auth.iter())
+        .all(|(&a, &b)| a == b)
 }

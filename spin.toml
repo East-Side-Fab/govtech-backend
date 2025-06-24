@@ -12,6 +12,8 @@ surrealdb_user = { required = true }
 surrealdb_password = { required = true }
 surrealdb_namespace = { required = true }
 surrealdb_database = { required = true }
+page_admin_name = { required = true }
+page_admin_password = { required = true }
 
 [[trigger.http]]
 route = "/participants"
@@ -31,3 +33,5 @@ user = "{{ surrealdb_user }}"
 password = "{{ surrealdb_password }}"
 namespace = "{{ surrealdb_namespace }}"
 database = "{{ surrealdb_database }}"
+admin_name = "{{ page_admin_name }}"
+admin_password = "{{ page_admin_password }}"
