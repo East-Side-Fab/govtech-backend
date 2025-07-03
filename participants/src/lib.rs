@@ -37,6 +37,7 @@ pub struct CreateParticipantRequest {
     pub mail: String,
     pub first_name: String,
     pub last_name: String,
+    pub organisation: Option<String>,
 }
 
 async fn handle_create_participant(r: Request, _: Params) -> anyhow::Result<impl IntoResponse> {
@@ -117,7 +118,8 @@ async fn create_participant(payload: CreateParticipantRequest) -> anyhow::Result
         "name": {
             "first": payload.first_name,
             "last": payload.last_name,
-        }
+        },
+        "organisation": payload.organisation
     });
 
     let query = format!(
